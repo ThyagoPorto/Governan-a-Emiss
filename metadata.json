@@ -1,0 +1,6 @@
+{
+  "name": "SIEG AI Governance Center",
+  "description": "Centro corporativo de governança, qualidade, monitoramento e inteligência operacional para a assistente Emis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

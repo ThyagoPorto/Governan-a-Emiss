@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions for static/schema validation
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Evaluation Validation Blueprint
+    function isValidEvaluation(data) {
+      return data.keys().hasAll([
+        'id', 'timestamp', 'rawText', 'clienteMsg', 'emisMsg',
+        'scoreGeral', 'classificacao', 'respostaCorreta', 'semAlucinacao',
+        'aderenciaPrompt', 'clareza', 'seguranca', 'personaEmis',
+        'houveAlucinacao', 'alucinacaoDetalhe', 'seguiuOriginalPrompt',
+        'resolveuDuvida', 'categoriaErro', 'nivelDeRisco', 'promptMelhoria',
+        'tema', 'foraDoEscopo', 'riscoSeguranca', 'encaminhadoSuporte',
+        'sinaisRiscoCliente', 'riscoClienteClassificacao', 'resumoExecutivo'
+      ])
+      && data.id is string && data.id.size() <= 100
+      && data.timestamp is string && data.timestamp.size() <= 50
+      && data.rawText is string && data.rawText.size() <= 50000
+      && data.clienteMsg is string && data.clienteMsg.size() <= 20000
+      && data.emisMsg is string && data.emisMsg.size() <= 20000
+      && data.scoreGeral is number && data.scoreGeral >= 0 && data.scoreGeral <= 100
+      && data.classificacao is string && data.classificacao.size() <= 30
+      && data.respostaCorreta is bool
+      && data.semAlucinacao is bool
+      && data.aderenciaPrompt is bool
+      && data.clareza is bool
+      && data.seguranca is bool
+      && data.personaEmis is bool
+      && data.houveAlucinacao is bool
+      && data.seguiuOriginalPrompt is bool
+      && data.resolveuDuvida is bool
+      && data.categoriaErro is string && data.categoriaErro.size() <= 50
+      && data.nivelDeRisco is string && data.nivelDeRisco.size() <= 30
+      && data.tema is string && data.tema.size() <= 50
+      && data.foraDoEscopo is bool
+      && data.riscoSeguranca is bool
+      && data.encaminhadoSuporte is bool
+      && data.riscoClienteClassificacao is string && data.riscoClienteClassificacao.size() <= 30
+      && data.resumoExecutivo is string && data.resumoExecutivo.size() <= 10000
+      && (!data.keys().contains('clienteIdentificado') || (data.clienteIdentificado is string && data.clienteIdentificado.size() <= 1000));
+    }
+
+    // Secure database gate for customer evaluations
+    match /evaluations/{evaluationId} {
+      allow get, list: if true; // Public list and read within preview environment
+      
+      allow create: if isValidId(evaluationId) 
+                    && incoming().id == evaluationId
+                    && isValidEvaluation(incoming());
+
+      allow update: if isValidId(evaluationId)
+                    && incoming().id == existing().id
+                    && isValidEvaluation(incoming());
+
+      allow delete: if isValidId(evaluationId);
+    }
+  }
+}
